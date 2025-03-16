@@ -100,6 +100,22 @@ local function getEggInfo()
     return eggInfo
 end
 
+local function teleportToBottom()
+    local player = game:GetService("Players").LocalPlayer
+    local character = player.Character
+
+    if character and character:FindFirstChild("HumanoidRootPart") then
+
+        local bottomPlatePosition = Vector3.new(-74.93, 6913.11, -1.56)
+
+        character.HumanoidRootPart.CFrame = CFrame.new(bottomPlatePosition)
+
+        return true
+    end
+
+    return false
+end
+
 local function createUI()
 
     local success, errorMsg = pcall(function()
@@ -441,6 +457,87 @@ local function createUI()
             end
         })
 
+        local BottomSection = AutoFarmTab:CreateSection("🔽 Bottom Farming")
+
+        local autoBottomEnabled = false
+
+        AutoFarmTab:CreateToggle({
+            Name = "🔽 Auto Bottom",
+            Info = "Teleports to bottom plate for +1 bottom",
+            CurrentValue = false,
+            Flag = "AutoBottomToggle",
+            Callback = function(Value)
+                autoBottomEnabled = Value
+
+                if Value then
+                    spawn(function()
+                        while autoBottomEnabled do
+                            local success = teleportToBottom()
+
+                            if success then
+                                ExecutorVars.LogFunction("Teleported to bottom plate")
+                            else
+                                ExecutorVars.LogFunction("Failed to teleport to bottom plate")
+                            end
+
+                            task.wait(5)  
+                        end
+                    end)
+
+                    ExecutorVars.LogFunction("Auto Bottom enabled")
+
+                    Rayfield:Notify({
+                        Title = "Auto Bottom Enabled",
+                        Content = "Now teleporting to bottom plate",
+                        Duration = 3,
+                        Image = 4483362458,
+                    })
+                else
+                    ExecutorVars.LogFunction("Auto Bottom disabled")
+                end
+            end
+        })
+
+        AutoFarmTab:CreateButton({
+            Name = "Teleport to Bottom Once",
+            Callback = function()
+                local success = teleportToBottom()
+
+                if success then
+                    ExecutorVars.LogFunction("Teleported to bottom plate")
+
+                    Rayfield:Notify({
+                        Title = "Teleported",
+                        Content = "Successfully teleported to bottom plate",
+                        Duration = 2,
+                        Image = 4483362458,
+                    })
+                else
+                    ExecutorVars.LogFunction("Failed to teleport to bottom plate")
+
+                    Rayfield:Notify({
+                        Title = "Teleport Failed",
+                        Content = "Could not teleport to bottom plate",
+                        Duration = 2,
+                        Image = 4483362458,
+                    })
+                end
+            end
+        })
+
+        AutoFarmTab:CreateSlider({
+            Name = "Bottom Teleport Interval",
+            Info = "Seconds between teleports",
+            Range = {1, 30},
+            Increment = 1,
+            Suffix = "s",
+            CurrentValue = 5,
+            Flag = "BottomTeleportInterval",
+            Callback = function(Value)
+                ExecutorVars.LogFunction("Bottom teleport interval set to " .. Value .. "s")
+            end
+        })
+
         local DrillsSection = DrillsTab:CreateSection("Drills Info")
 
         local OwnedDrillsParagraph = DrillsTab:CreateParagraph({
@@ -603,6 +700,111 @@ local function createUI()
         })
 
         local DebugSection = AdvancedTab:CreateSection("Debug Options")
+
+        local printingCoords = false
+
+        AdvancedTab:CreateToggle({
+            Name = "Print Coordinates",
+            Info = "Prints current position to F9 console",
+            CurrentValue = false,
+            Flag = "PrintCoords",
+            Callback = function(Value)
+                printingCoords = Value
+
+                if Value then
+                    spawn(function()
+                        while printingCoords do
+                            local player = game:GetService("Players").LocalPlayer
+                            local character = player.Character
+
+                            if character and character:FindFirstChild("HumanoidRootPart") then
+                                local pos = character.HumanoidRootPart.Position
+                                local formatted = string.format("Position: Vector3.new(%.2f, %.2f, %.2f)", pos.X, pos.Y, pos.Z)
+                                print(formatted)
+
+                                if ExecutorVars.VerboseLogging then
+                                    ExecutorVars.LogFunction(formatted)
+                                end
+                            end
+
+                            task.wait(1) 
+                        end
+                    end)
+
+                    ExecutorVars.LogFunction("Coordinate printing enabled")
+                else
+                    ExecutorVars.LogFunction("Coordinate printing disabled")
+                end
+            end
+        })
+
+        AdvancedTab:CreateButton({
+            Name = "Print Current Position",
+            Info = "Prints current position once to F9",
+            Callback = function()
+                local player = game:GetService("Players").LocalPlayer
+                local character = player.Character
+
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local pos = character.HumanoidRootPart.Position
+                    local formatted = string.format("Current position: Vector3.new(%.2f, %.2f, %.2f)", pos.X, pos.Y, pos.Z)
+                    print(formatted)
+
+                    setclipboard(string.format("Vector3.new(%.2f, %.2f, %.2f)", pos.X, pos.Y, pos.Z))
+
+                    ExecutorVars.LogFunction("Position copied to clipboard")
+
+                    Rayfield:Notify({
+                        Title = "Position Copied",
+                        Content = "Current position copied to clipboard",
+                        Duration = 3,
+                        Image = 4483362458,
+                    })
+                else
+                    ExecutorVars.LogFunction("Failed to get position")
+                end
+            end
+        })
+
+        AdvancedTab:CreateButton({
+            Name = "Set Bottom Position",
+            Info = "Sets current position as bottom teleport target",
+            Callback = function()
+                local player = game:GetService("Players").LocalPlayer
+                local character = player.Character
+
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local pos = character.HumanoidRootPart.Position
+
+                    local oldFunc = teleportToBottom
+
+                    _G.teleportToBottom = function()
+                        local player = game:GetService("Players").LocalPlayer
+                        local character = player.Character
+
+                        if character and character:FindFirstChild("HumanoidRootPart") then
+                            character.HumanoidRootPart.CFrame = CFrame.new(pos)
+                            return true
+                        end
+
+                        return false
+                    end
+
+                    teleportToBottom = _G.teleportToBottom
+
+                    ExecutorVars.LogFunction("Bottom position updated")
+
+                    Rayfield:Notify({
+                        Title = "Bottom Position Updated",
+                        Content = "Current position set as bottom teleport target",
+                        Duration = 3,
+                        Image = 4483362458,
+                    })
+                else
+                    ExecutorVars.LogFunction("Failed to set bottom position")
+                end
+            end
+        })
 
         AdvancedTab:CreateToggle({
             Name = "Verbose Logging",
